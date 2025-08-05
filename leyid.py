@@ -28,14 +28,16 @@ if uploaded_file is not None:
         df = pd.read_excel(uploaded_file)
         
         # Limpieza y preparación de datos
+        # Se renombra la columna 'Inicio Actividad Económica' a 'Inicio_Actividad_Economica'
+        # para asegurar la compatibilidad con el resto del script
         df.columns = df.columns.str.replace(r'[^\w\s]', '', regex=True).str.replace(' ', '_').str.strip()
         
-        # --- LÍNEAS DE LIMPIEZA CORREGIDAS ---
         # Convertir a numérico de forma segura, reemplazando errores con NaN
         df['Financiamiento_Innova'] = pd.to_numeric(df['Financiamiento_Innova'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
         df['Aprobado_Privado_Pecuniario'] = pd.to_numeric(df['Aprobado_Privado_Pecuniario'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
         df['Monto_Certificado_Ley'] = pd.to_numeric(df['Monto_Certificado_Ley'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
 
+        # Conversión de fechas a formato datetime
         df['Inicio_Actividad_Economica'] = pd.to_datetime(df['Inicio_Actividad_Economica'], errors='coerce')
         df['Año_Adjudicacion'] = pd.to_numeric(df['Año_Adjudicacion'], errors='coerce').fillna(0).astype(int)
         
