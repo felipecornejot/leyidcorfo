@@ -66,7 +66,6 @@ if uploaded_file is not None:
         st.error(f"Error al cargar o procesar el archivo: {e}")
         st.stop()
 
-# Si no hay archivo cargado, muestra un mensaje y no ejecuta el resto del script
 if df is None:
     st.info("Por favor, sube un archivo de Excel para empezar.")
     st.stop()
@@ -189,4 +188,10 @@ st.markdown("---")
 st.header("📋 Tabla de Datos Filtrada")
 st.dataframe(df_filtrado)
 
-csv_data = df_
+csv_data = df_filtrado.to_csv(index=False).encode('utf-8')
+st.download_button(
+    "💾 Exportar datos filtrados a CSV",
+    csv_data,
+    "datos_innovacion_filtrados.csv",
+    "text/csv"
+)
