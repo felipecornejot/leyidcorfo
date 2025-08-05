@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import io
 
 # Configuración de la página
 st.set_page_config(
@@ -15,7 +16,10 @@ st.markdown("Este dashboard interactivo muestra indicadores clave de los proyect
 st.markdown("---")
 
 # --- Widget para cargar archivo ---
-uploaded_file = st.sidebar.file_uploader("📂 Cargar archivo de Excel", type=["xlsx"])
+uploaded_file = st.sidebar.file_uploader(
+    "📂 Cargar archivo de Excel (.xlsx)", 
+    type=["xlsx"]
+)
 
 df = None
 if uploaded_file is not None:
@@ -25,9 +29,13 @@ if uploaded_file is not None:
         
         # Limpieza y preparación de datos
         df.columns = df.columns.str.replace(r'[^\w\s]', '', regex=True).str.replace(' ', '_').str.strip()
-        df['Financiamiento_Innova'] = df['Financiamiento_Innova'].replace({'\$': '', '\.': ''}, regex=True).astype(float)
-        df['Aprobado_Privado_Pecuniario'] = df['Aprobado_Privado_Pecuniario'].replace({'\$': '', '\.': ''}, regex=True).astype(float)
-        df['Monto_Certificado_Ley'] = df['Monto_Certificado_Ley'].replace({'\$': '', '\.': ''}, regex=True).astype(float)
+        
+        # --- LÍNEAS DE LIMPIEZA CORREGIDAS ---
+        # Convertir a numérico de forma segura, reemplazando errores con NaN
+        df['Financiamiento_Innova'] = pd.to_numeric(df['Financiamiento_Innova'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+        df['Aprobado_Privado_Pecuniario'] = pd.to_numeric(df['Aprobado_Privado_Pecuniario'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+        df['Monto_Certificado_Ley'] = pd.to_numeric(df['Monto_Certificado_Ley'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+
         df['Inicio_Actividad_Economica'] = pd.to_datetime(df['Inicio_Actividad_Economica'], errors='coerce')
         df['Año_Adjudicacion'] = pd.to_numeric(df['Año_Adjudicacion'], errors='coerce').fillna(0).astype(int)
         
