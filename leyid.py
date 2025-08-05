@@ -15,13 +15,13 @@ st.markdown("Este dashboard interactivo muestra indicadores clave de los proyect
 st.markdown("---")
 
 # --- Widget para cargar archivo ---
-uploaded_file = st.sidebar.file_uploader("📂 Cargar archivo CSV", type=["csv"])
+uploaded_file = st.sidebar.file_uploader("📂 Cargar archivo de Excel", type=["xlsx"])
 
 df = None
 if uploaded_file is not None:
     try:
-        # Cargar los datos del archivo subido
-        df = pd.read_csv(uploaded_file, sep=';')
+        # Cargar los datos del archivo de Excel subido
+        df = pd.read_excel(uploaded_file)
         
         # Limpieza y preparación de datos
         df.columns = df.columns.str.replace(r'[^\w\s]', '', regex=True).str.replace(' ', '_').str.strip()
@@ -37,7 +37,7 @@ if uploaded_file is not None:
 
 # Si no hay archivo cargado, muestra un mensaje y no ejecuta el resto del script
 if df is None:
-    st.info("Por favor, sube un archivo CSV para empezar.")
+    st.info("Por favor, sube un archivo de Excel para empezar.")
     st.stop()
 
 # --- Barra lateral para filtros ---
