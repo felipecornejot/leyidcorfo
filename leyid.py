@@ -24,22 +24,40 @@ uploaded_file = st.sidebar.file_uploader(
 df = None
 if uploaded_file is not None:
     try:
-        # Cargar los datos del archivo de Excel subido
         df = pd.read_excel(uploaded_file)
         
-        # Limpieza y preparación de datos
-        # Se renombra la columna 'Inicio Actividad Económica' a 'Inicio_Actividad_Economica'
-        # para asegurar la compatibilidad con el resto del script
-        df.columns = df.columns.str.replace(r'[^\w\s]', '', regex=True).str.replace(' ', '_').str.strip()
-        
-        # Convertir a numérico de forma segura, reemplazando errores con NaN
-        df['Financiamiento_Innova'] = pd.to_numeric(df['Financiamiento_Innova'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
-        df['Aprobado_Privado_Pecuniario'] = pd.to_numeric(df['Aprobado_Privado_Pecuniario'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
-        df['Monto_Certificado_Ley'] = pd.to_numeric(df['Monto_Certificado_Ley'].astype(str).str.replace(r'[^\d.]', '', regex=True), errors='coerce')
+        # --- LIMPIEZA AUTOMÁTICA DE DATOS ---
+        # 1. Estandarizar los nombres de todas las columnas: a mayúsculas, sin espacios ni caracteres especiales
+        df.columns = df.columns.str.strip().str.replace(' ', '_').str.upper()
 
-        # Conversión de fechas a formato datetime
-        df['Inicio_Actividad_Economica'] = pd.to_datetime(df['Inicio_Actividad_Economica'], errors='coerce')
-        df['Año_Adjudicacion'] = pd.to_numeric(df['Año_Adjudicacion'], errors='coerce').fillna(0).astype(int)
+        # 2. Convertir columnas de montos y fechas de forma segura
+        # Diccionario con los nombres de las columnas a limpiar y sus tipos de datos
+        columns_to_clean = {
+            'FINANCIAMIENTO_INNOVA': float,
+            'APROBADO_PRIVADO_PECUNIARIO': float,
+            'MONTO_CERTIFICADO_LEY': float,
+            'INICIO_ACTIVIDAD_ECONOMICA': 'datetime',
+            'AÑO_ADJUDICACION': int
+        }
+
+        for col, dtype in columns_to_clean.items():
+            if col in df.columns:
+                if dtype == float:
+                    # Convertir a numérico de forma segura, reemplazando errores con NaN
+                    df[col] = pd.to_numeric(
+                        df[col].astype(str).str.replace(r'[^\d.]', '', regex=True),
+                        errors='coerce'
+                    )
+                elif dtype == 'datetime':
+                    # Convertir a formato de fecha de forma segura
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                elif dtype == int:
+                    # Convertir a entero de forma segura, llenando NaN con 0
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
+
+        # Si el usuario ha subido un archivo con un nombre de columna diferente, es posible que el script no la encuentre.
+        # Por ejemplo, si en lugar de "AÑO ADJUDICACION" dice "AÑO", se omitirá la limpieza de esa columna.
+        # Por ello, es recomendable asegurarse de que los nombres de las columnas coincidan con los esperados.
         
     except Exception as e:
         st.error(f"Error al cargar o procesar el archivo: {e}")
@@ -54,7 +72,7 @@ if df is None:
 st.sidebar.header("⚙️ Opciones de Filtro")
 
 # Filtro de año
-años_disponibles = sorted(df['Año_Adjudicacion'].unique())
+años_disponibles = sorted(df['AÑO_ADJUDICACION'].unique())
 año_seleccionado = st.sidebar.slider(
     'Selecciona un Año de Adjudicación',
     min_value=min(años_disponibles),
@@ -63,7 +81,7 @@ año_seleccionado = st.sidebar.slider(
 )
 
 # Filtro de región
-regiones_disponibles = sorted(df['Region'].dropna().unique())
+regiones_disponibles = sorted(df['REGION'].dropna().unique())
 region_seleccionada = st.sidebar.multiselect(
     'Filtrar por Región',
     options=regiones_disponibles,
@@ -71,7 +89,7 @@ region_seleccionada = st.sidebar.multiselect(
 )
 
 # Filtro de sector económico
-sectores_disponibles = sorted(df['Sector_Economico'].dropna().unique())
+sectores_disponibles = sorted(df['SECTOR_ECONOMICO'].dropna().unique())
 sector_seleccionado = st.sidebar.multiselect(
     'Filtrar por Sector Económico',
     options=sectores_disponibles,
@@ -80,10 +98,10 @@ sector_seleccionado = st.sidebar.multiselect(
 
 # Aplicar filtros
 df_filtrado = df[
-    (df['Año_Adjudicacion'] >= año_seleccionado[0]) &
-    (df['Año_Adjudicacion'] <= año_seleccionado[1]) &
-    (df['Region'].isin(region_seleccionada)) &
-    (df['Sector_Economico'].isin(sector_seleccionado))
+    (df['AÑO_ADJUDICACION'] >= año_seleccionado[0]) &
+    (df['AÑO_ADJUDICACION'] <= año_seleccionado[1]) &
+    (df['REGION'].isin(region_seleccionada)) &
+    (df['SECTOR_ECONOMICO'].isin(sector_seleccionado))
 ]
 
 if df_filtrado.empty:
@@ -94,8 +112,8 @@ if df_filtrado.empty:
 st.header("📈 Indicadores Clave")
 
 total_proyectos = df_filtrado.shape[0]
-inversion_innova = df_filtrado['Financiamiento_Innova'].sum()
-inversion_privada = df_filtrado['Aprobado_Privado_Pecuniario'].sum()
+inversion_innova = df_filtrado['FINANCIAMIENTO_INNOVA'].sum()
+inversion_privada = df_filtrado['APROBADO_PRIVADO_PECUNIARIO'].sum()
 
 col1, col2, col3 = st.columns(3)
 with col1:
@@ -111,7 +129,7 @@ st.markdown("---")
 st.header("📊 Proyectos por Tipo de Innovación")
 
 # Agrupar y contar proyectos por tipo de innovación
-tipo_innovacion_counts = df_filtrado['Tipo_Innovacion'].value_counts().reset_index()
+tipo_innovacion_counts = df_filtrado['TIPO_INNOVACION'].value_counts().reset_index()
 tipo_innovacion_counts.columns = ['Tipo_Innovacion', 'Cantidad_Proyectos']
 
 fig_tipo_innovacion = px.pie(
@@ -129,7 +147,7 @@ st.markdown("---")
 # --- Visualización por Región ---
 st.header("🗺️ Distribución Geográfica de Proyectos")
 
-region_counts = df_filtrado['Region'].value_counts().reset_index()
+region_counts = df_filtrado['REGION'].value_counts().reset_index()
 region_counts.columns = ['Region', 'Cantidad_Proyectos']
 
 fig_region = px.bar(
@@ -147,7 +165,7 @@ st.markdown("---")
 # --- Visualización por Sector Económico ---
 st.header("🏭 Proyectos por Sector Económico")
 
-sector_counts = df_filtrado['Sector_Economico'].value_counts().reset_index()
+sector_counts = df_filtrado['SECTOR_ECONOMICO'].value_counts().reset_index()
 sector_counts.columns = ['Sector_Economico', 'Cantidad_Proyectos']
 sector_counts = sector_counts.sort_values(by='Cantidad_Proyectos', ascending=False)
 
