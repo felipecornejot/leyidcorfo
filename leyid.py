@@ -26,40 +26,47 @@ if uploaded_file is not None:
     try:
         df = pd.read_excel(uploaded_file)
         
-        # --- LIMPIEZA Y RENOMBRADO DE COLUMNAS ---
-        # Se renombra las columnas clave con los nombres correctos para el script
-        df = df.rename(columns={
-            'Año Adjudicación': 'año_adjudicacion',
-            'Region': 'region',
-            'Sector Económico': 'sector_economico',
-            'Tipo Innovacion': 'tipo_innovacion',
-            'Financiamiento Innova': 'financiamiento_innova',
-            'Aprobado Privado Pecuniario': 'aprobado_privado_pecuniario',
-            'Monto Certificado Ley': 'monto_certificado_ley',
-            'Inicio Actividad Económica': 'inicio_actividad_economica'
-        })
-        
-        # 2. Convertir columnas de montos y fechas de forma segura
-        df['financiamiento_innova'] = pd.to_numeric(
-            df['financiamiento_innova'].astype(str).str.replace(r'[^\d.]', '', regex=True),
-            errors='coerce'
-        )
-        df['aprobado_privado_pecuniario'] = pd.to_numeric(
-            df['aprobado_privado_pecuniario'].astype(str).str.replace(r'[^\d.]', '', regex=True),
-            errors='coerce'
-        )
-        df['monto_certificado_ley'] = pd.to_numeric(
-            df['monto_certificado_ley'].astype(str).str.replace(r'[^\d.]', '', regex=True),
-            errors='coerce'
-        )
+        # --- LIMPIEZA AUTOMÁTICA DE DATOS Y COLUMNAS ---
+        # 1. Renombrar las columnas para estandarizarlas: a minúsculas, sin acentos ni espacios
+        def slugify(text):
+            text = text.lower()
+            text = text.replace(' ', '_')
+            text = text.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+            text = ''.join(c for c in text if c.isalnum() or c == '_')
+            return text
 
-        df['inicio_actividad_economica'] = pd.to_datetime(df['inicio_actividad_economica'], errors='coerce')
-        df['año_adjudicacion'] = pd.to_numeric(df['año_adjudicacion'], errors='coerce').fillna(0).astype(int)
+        df.columns = [slugify(col) for col in df.columns]
+
+        # 2. Convertir columnas de montos y fechas de forma segura
+        # Diccionario con los nombres de las columnas a limpiar y sus tipos de datos
+        columns_to_clean = {
+            'financiamiento_innova': float,
+            'aprobado_privado_pecuniario': float,
+            'monto_certificado_ley': float,
+            'inicio_actividad_economica': 'datetime',
+            'año_adjudicacion': int
+        }
+
+        for col, dtype in columns_to_clean.items():
+            if col in df.columns:
+                if dtype == float:
+                    # Convertir a numérico de forma segura, reemplazando errores con NaN
+                    df[col] = pd.to_numeric(
+                        df[col].astype(str).str.replace(r'[^\d.]', '', regex=True),
+                        errors='coerce'
+                    )
+                elif dtype == 'datetime':
+                    # Convertir a formato de fecha de forma segura
+                    df[col] = pd.to_datetime(df[col], errors='coerce')
+                elif dtype == int:
+                    # Convertir a entero de forma segura, llenando NaN con 0
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0).astype(int)
         
     except Exception as e:
         st.error(f"Error al cargar o procesar el archivo: {e}")
         st.stop()
 
+# Si no hay archivo cargado, muestra un mensaje y no ejecuta el resto del script
 if df is None:
     st.info("Por favor, sube un archivo de Excel para empezar.")
     st.stop()
@@ -182,10 +189,4 @@ st.markdown("---")
 st.header("📋 Tabla de Datos Filtrada")
 st.dataframe(df_filtrado)
 
-csv_data = df_filtrado.to_csv(index=False).encode('utf-8')
-st.download_button(
-    "💾 Exportar datos filtrados a CSV",
-    csv_data,
-    "datos_innovacion_filtrados.csv",
-    "text/csv"
-)
+csv_data = df_
